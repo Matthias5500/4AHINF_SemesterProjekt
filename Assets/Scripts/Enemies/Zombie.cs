@@ -10,8 +10,7 @@ namespace DefaultNamespace
 
         public void DealDamage(int decrement, PlayerController player)
         {
-            player.DecreasePlayerHealth(decrement);
+            player.ChangePlayerHealth(decrement);
         }
-        
     }
 }

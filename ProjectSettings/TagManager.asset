@@ -6,6 +6,9 @@ TagManager:
   tags:
   - Chest
   - Item
+  - Bomber
+  - Zombie
+  - Sword
   layers:
   - Default
   - TransparentFX
@@ -14,11 +17,11 @@ TagManager:
   - Water
   - UI
   - 
-  - 
-  - 
+  - Player
+  - Healthbar
   - Platforms
   - Chests
-  - 
+  - Enemies
   - 
   - 
   - 
@@ -43,6 +46,12 @@ TagManager:
   - name: Default
     uniqueID: 0
     locked: 0
+  - name: UI
+    uniqueID: 2298345339
+    locked: 0
   - name: Player
     uniqueID: 3499153613
+    locked: 0
+  - name: Healthbar
+    uniqueID: 3501705447
     locked: 0
