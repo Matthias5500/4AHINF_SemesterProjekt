@@ -2,10 +2,8 @@
 using System.IO;
 using UnityEngine;
 
-namespace DefaultNamespace
-{
-    public class Player
-    {
+namespace DefaultNamespace {
+    public class Player {
         public string Name = "";
         public string Email = "";
         public string Password = "";
@@ -13,10 +11,9 @@ namespace DefaultNamespace
         public float JumpVelocity = 2f;
         public float PlayerSpeed = .02f;*/
         public int ChestsOpened = 0;
-        public bool[] ItemsCollected = new bool[3];
+        public bool[] ItemsCollected = new bool[4];
 
-        public string getName()
-        {
+        public string getName() {
             string path = Application.persistentDataPath + "/CurrentPlayer.txt";
             StreamReader reader = new StreamReader(path);
             Name = reader.ReadToEnd();

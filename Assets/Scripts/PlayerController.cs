@@ -5,13 +5,14 @@ using System.Text;
 using UnityEngine.Networking;
 using System.Collections;
 using System.IO;
+using System.Security.Cryptography;
 using Newtonsoft.Json;
 using UnityEngine.UI;
 using UnityEngine.UIElements;
 using Image = UnityEngine.UI.Image;
 
-public class PlayerController : MonoBehaviour
-{
+public class PlayerController : MonoBehaviour {
+    
     [SerializeField] private LayerMask platformsLayerMask;
     [SerializeField] private GameObject PlayerObject;
     [SerializeField] private GameObject Sword;
@@ -27,17 +28,24 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private Image HealthBarKoordinates;
     [SerializeField] private Canvas uiCanvas;
     [SerializeField] private GameObject pauseMenuCanvas;
+    [SerializeField] private GameObject missileObject;
+    [SerializeField] private GameObject missileLauncher;
+
     private Item item;
     private Player player = new Player();
-    private float playerSpeed = .02f;
-    private float playerjumpForce = 2f;
-    private float playerHealth = 100;
+    [SerializeField] private float playerSpeed = .02f;
+    [SerializeField] private float playerjumpForce = 2f;
+    [SerializeField] private float playerHealth = 100;
     private float maxHealth = 100;
     private int i = 0;
-
+    private float period = 1;
+    private float nextActionTime = 1;
+    [SerializeField] private float MissileDelay = 10;
+    private float nextMissileActionTime = 1;
+    [SerializeField] private bool hasMissileLauncher = false;
+    
     // Start is called before the first frame update
-    private void Start()
-    {
+    private void Start() {
         rigidbody = GetComponent<Rigidbody2D>();
         boxCollider = GetComponent<BoxCollider2D>();
         item = itemGameObject.GetComponent<Item>();
@@ -49,9 +57,9 @@ public class PlayerController : MonoBehaviour
         TryGetComponent(out rigidbody);
     }
     // Update is called once per frame
-    private void Update()
-    {
+    private void Update() {
         PullOutWeapon();
+        Missile();
         //Check for Internet Connection
         if(Application.internetReachability == NetworkReachability.NotReachable)
         {
@@ -67,22 +75,19 @@ public class PlayerController : MonoBehaviour
              PauseMenu();
          
     }
-    private void FixedUpdate()
-    {
+    private void FixedUpdate() {
         
         moveInput = new Vector2(Input.GetAxis("Horizontal"), 0);
         //fixes the HealthBar to the player
         var temp = PlayerObject.transform.position;
         uiCanvas.transform.position = new Vector3(temp.x, temp.y, temp.z);
-        if (playerHealth <= 0)
-        {
+        if (playerHealth <= 0) {
             Respawn();
         }
-        playerMovement();
+        PlayerMovement();
     }
 
-    public void PauseMenu()
-    {
+    public void PauseMenu() {
         i++;
         pauseMenuCanvas.transform.position = PlayerObject.transform.position;
         pauseMenuCanvas.SetActive(true);
@@ -97,35 +102,30 @@ public class PlayerController : MonoBehaviour
             i = 0;
         }
     }
-    private void playerMovement()
-    {
-        //Jump if feet touch solid object
+    private void PlayerMovement() {
+        //Jump if feet touch solid object and if space is pressed
         if (IsGrounded() && Input.GetAxisRaw("Jump") > 0){
+            //Jump
             rigidbody.velocity = Vector2.up * playerjumpForce;
         }
-
+        //Move player
         rigidbody.position += moveInput * playerSpeed;
-        
-        //Swap sprite direction if your moving in different dirrections
-        if (moveInput.x > 0)
+        //Swap sprite direction if your moving in different directions
+        if (moveInput.x > 0) //Right
             transform.localScale = Vector3.one;
-        else if (moveInput.x < 0)
+        else if (moveInput.x < 0) //Left
             transform.localScale = new Vector3(-1, 1, 1);
         
     }
-    public void IncreasePlayerSpeed(float increment)
-    {
+    public void IncreasePlayerSpeed(float increment) {
         playerSpeed *= increment;
     }
-    public void IncreasePlayerjumpSpeed(float increment)
-    {
+    public void IncreasePlayerjumpSpeed(float increment) {
         playerjumpForce *= increment;
     }
-    public void ChangePlayerHealth(int decrement)
-    {
+    public void ChangePlayerHealth(int decrement) {
         if (playerHealth - decrement > maxHealth)
         {
-            Debug.Log("MAX Health");
             playerHealth = maxHealth;
             healthBarImage.fillAmount = Mathf.Clamp(playerHealth, 0, 1);
         }
@@ -138,15 +138,50 @@ public class PlayerController : MonoBehaviour
             healthBarImage.fillAmount = Mathf.Clamp(healthPercentage, 0, 1f);
         }
     }
+    public void IncreaseMissileCount(int fraction)
+    {
+        if(!hasMissileLauncher)
+            hasMissileLauncher = true;
+        
+        MissileDelay /= fraction;
+    }
+
+    private void Missile()
+    {
+        if (hasMissileLauncher)
+        {
+            if (Time.time > nextMissileActionTime)
+            {
+                nextMissileActionTime = Time.time + MissileDelay;
+                StartCoroutine(MissileLifespanController());
+            }
+        }
+    }
+
+    IEnumerator MissileLifespanController()
+    {
+        GameObject newMissile = Instantiate(missileObject);
+        newMissile.transform.position = missileLauncher.transform.position;
+        newMissile.AddComponent<Missile>();
+        yield return new WaitForSeconds(1f);
+        Destroy(newMissile);
+    }
 
     private void PullOutWeapon()
     {
-        if (Input.GetMouseButtonDown(0)) {
+        
+        if (Input.GetMouseButtonDown(0) && Time.time > nextActionTime) {
+            nextActionTime = period + Time.time;
             Sword.gameObject.SetActive(true);
+            StartCoroutine(PullOutWeaponDelay());
         }
-        if(Input.GetMouseButtonUp(0))   {
-            Sword.gameObject.SetActive(false);
-        }
+    }
+    
+    IEnumerator PullOutWeaponDelay()
+    {
+        Sword.gameObject.SetActive(true);
+        yield return new WaitForSeconds(0.5f);
+        Sword.gameObject.SetActive(false);
     }
     private bool CheckForChest(){
         Collider2D[] hitColliders = Physics2D.OverlapCircleAll(boxCollider.bounds.center, .2f);
@@ -179,7 +214,7 @@ public class PlayerController : MonoBehaviour
         if (CheckForChest())
         {
             player.Name = player.getName();
-            StartCoroutine(getRequest("http://localhost:5000/record/" + player.Name));
+            StartCoroutine(GETRequest("http://localhost:5000/record/" + player.Name));
             
             GameObject newItem = Instantiate(itemGameObject);
             newItem.GetComponent<SpriteRenderer>().sprite = item.GETRandomSprite();
@@ -199,21 +234,17 @@ public class PlayerController : MonoBehaviour
         Scene scene = SceneManager.GetActiveScene();
         SceneManager.LoadScene("Menu");
     }
-    IEnumerator getRequest(string uri)
-    {
+    IEnumerator GETRequest(string uri) {
         var uwr = new UnityWebRequest(uri, "GET");
         uwr.downloadHandler = (DownloadHandler)new DownloadHandlerBuffer();
         uwr.SetRequestHeader("Content-Type", "application/json");
 
         yield return uwr.SendWebRequest();
         
-        if (uwr.isNetworkError)
-        {
+        if (uwr.isNetworkError) {
             Debug.Log("Error While Sending: " + uwr.error);
         }
-        else
-        {
-            //Debug.Log("Received: " + uwr.downloadHandler.text);
+        else {
             player = JsonConvert.DeserializeObject<Player>(uwr.downloadHandler.text);
             player.ChestsOpened += 1;
             string json = JsonConvert.SerializeObject(player);

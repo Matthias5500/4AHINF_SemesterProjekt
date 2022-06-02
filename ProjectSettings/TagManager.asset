@@ -9,6 +9,7 @@ TagManager:
   - Bomber
   - Zombie
   - Sword
+  - Missile
   layers:
   - Default
   - TransparentFX

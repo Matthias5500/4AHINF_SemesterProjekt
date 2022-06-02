@@ -10,8 +10,7 @@ public class Attack : MonoBehaviour
         if (other.gameObject.layer == 11)
         {
             var enemy = other.gameObject.GetComponent(nameof(EnemyController)) as EnemyController;
-            Debug.Log("Enemy hit");
-            enemy.TakeDamageFromPlayer();
+            enemy.TakeDamageFromPlayer(gameObject);
             
         }
     }
